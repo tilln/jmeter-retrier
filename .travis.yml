@@ -1,0 +1,12 @@
+language: java
+deploy:
+  provider: releases
+  api_key:
+    secure: iiLtCy7kuXOQe3mO9MXjkF3OdEBclICJl8/Q/YeYDf8a+lRXef5xAHKcvOeBJgsMVc9g24WltZr9DtB3/RhJ74SsVC92FINsBUpQVQv8oTZlnMgw6K9d5WAM+DrUUJ20Y8a9T2CTyKEdNs+osd1Krl9aBmXd4GuMtnNyFfjl0el9cOksKbPT/WTA1++6m/hqfzv34T2pzttOesAMAc5DRtXCigjU9qloi+I62JJpCEl8Mda2YNrt0rUWlZat4Nb3qAOqfFB5bSt7/F19+wCoj5x8VcY4lAedIk3IV54W6UOoyKBG7hWx0ov7jXRXWy3IjxZK12L4XTSGLJBdeMPzsp+yoD+FW4zqtSdPy2leBN27ctGMqyVg8+9l9OoUNgk44K4pLDykodnDOmvv5bpZ5L+gmJBZXm/4varHyl+WR+qDKNsHM5I0mWy0v9y9uNd+GsFs63zKOsKyz4486A+BuPUfrRCY+vLZkIAUFYzHfn+azvQDjT6HAHNdZ+sIxj+Dovc/R3o/8w2UkNEaIO6p13Ufe9ryAGaQwfK3tuK4b962SftJb4Guvg1vgcLzHTUdSUft/NWj3QAhBAnd6HnewBl36pbHdH+XD6FxPs/YeZanshkewRgnEageeBo8hQtRkjyGok6cFLSTj1n33TJGJNKZ9P9lyVTES0xiWncOk5s=
+  file: "target/jmeter-retrier-*.jar"
+  file_glob: true
+  skip_cleanup: true
+  overwrite: true
+  on:
+    repo: tilln/jmeter-retrier
+    tags: true
