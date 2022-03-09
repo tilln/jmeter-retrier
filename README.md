@@ -58,8 +58,8 @@ Parameters:
 Note that this plugin will not [execute](https://jmeter.apache.org/usermanual/test_plan.html#executionorder)
 other JMeter elements, i.e. Pre-Processors, Timers, Post-Processors and Assertions as part of a retry.
 
-Pre-Processors and Timers will only be executed once before the initial attempt and any retries.
-Likewise, Post-Processors and Assertions will only be executed once after the initial attempt and any retries
+Pre-Processors and Timers will only be executed **once**, before the initial attempt.
+Likewise, Post-Processors and Assertions will only be executed **once**, after the final attempt
 (or before in case of Post-Processors that appear before the *Retry Post-Processor*).
 
 
@@ -69,6 +69,24 @@ The following properties control the plugin behaviour:
 - `jmeter.retrier.sampleLabelSuffix`:
   Suffix to append to the retried sample's label.
   (default: "-retry").
+
+
+Installation
+------------
+<!--
+### Via [PluginsManager](https://jmeter-plugins.org/wiki/PluginsManager/)
+
+Under tab "Available Plugins", select "Sample Retrier", then click "Apply Changes and Restart JMeter".
+
+### Via Package from [JMeter-Plugins.org](https://jmeter-plugins.org/)
+
+Extract the [zip package](https://jmeter-plugins.org/files/packages/tilln-retrier-1.0.zip) into JMeter's lib directory, then restart JMeter.
+-->
+### Via Manual Download
+
+1. Copy the [jmeter-retrier jar file](https://github.com/tilln/jmeter-retrier/releases/download/1.0-SNAPSHOT/jmeter-retrier-1.0-SNAPSHOT.jar) into JMeter's lib/ext directory.
+2. Restart JMeter.
+
 
 Limitations
 -----------
