@@ -1,7 +1,7 @@
 # jmeter-retrier [![travis][travis-image]][travis-url]
 
-[travis-image]: https://travis-ci.com/tilln/jmeter-retrier.svg?branch=master
-[travis-url]: https://travis-ci.com/tilln/jmeter-retrier
+[travis-image]: https://app.travis-ci.com/tilln/jmeter-retrier.svg?branch=master
+[travis-url]: https://app.travis-ci.com/tilln/jmeter-retrier
 
 Overview
 --------
