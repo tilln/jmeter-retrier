@@ -9,6 +9,12 @@ import org.apache.jmeter.threads.JMeterContext;
 import org.apache.jmeter.util.JMeterUtils;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
+
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -21,11 +27,14 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
     public static final String
             MAX_RETRIES = "maxRetries",
             PAUSE_MILLISECONDS = "pauseMilliseconds",
-            RESPONSE_CODES = "responseCodes";
+            RESPONSE_CODES = "responseCodes",
+            RETRY_AFTER = "retryAfter";
 
     public static final String
             SAMPLE_LABEL_SUFFIX_PROPERTY = "jmeter.retrier.sampleLabelSuffix",
             SAMPLE_LABEL_SUFFIX_PROPERTY_DEFAULT = "-retry";
+
+    public static final Pattern RETRY_AFTER_HEADER_PATTERN = Pattern.compile("\\bRetry-After: (\\V*)"); // word boundary/non-vertical whitespace
 
     @Override
     public void process() {
@@ -65,6 +74,13 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
 
     protected boolean pause(SampleResult result) {
         long pause = getPauseMilliseconds();
+        if (getRetryAfter()) {
+            long retryAfter = getDelayUntilRetryAfterHeader(result);
+            if (retryAfter != 0) {
+                pause = Math.max(pause, retryAfter);
+                log.debug("Received \"Retry-After\", waiting {}ms", pause);
+            }
+        }
         if (pause > 0) {
             try {
                 Thread.sleep(pause);
@@ -116,10 +132,26 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
         return retry;
     }
 
-    public static String extractRetryAfterHeader(SampleResult result) {
-        Pattern p = Pattern.compile("Retry-After\\s*:\\s*([0-9]+)");
-        Matcher m = p.matcher(result.getResponseHeaders());
-        return m.matches() ? m.group(1) : null;
+    /**
+     * @return milliseconds until the time specified in the header, or 0 in case of no header or already in the past.
+     */
+    public static long getDelayUntilRetryAfterHeader(SampleResult result) {
+        final Matcher m = RETRY_AFTER_HEADER_PATTERN.matcher(result.getResponseHeaders());
+        if (m.find()) {
+            final String value = m.group(1);
+            if (value.matches("^[0-9]+$")) {
+                return Long.parseLong(value) * 1000L; // seconds to millis
+            }
+            try {
+                long millis = Instant.now().until(
+                        ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME),
+                        ChronoUnit.MILLIS);
+                return millis > 0 ? millis : 0;
+            } catch (DateTimeParseException e) {
+                log.warn("Ignoring invalid Retry-After header value \"{}\"", value);
+            }
+        }
+        return 0;
     }
 
     public long getMaxRetries() { return getPropertyAsLong(MAX_RETRIES); }
@@ -130,4 +162,7 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
 
     public String getResponseCodes() { return getPropertyAsString(RESPONSE_CODES); }
     public void setResponseCodes(String responseCodes) { setProperty(RESPONSE_CODES, responseCodes); }
+
+    public boolean getRetryAfter() { return getPropertyAsBoolean(RETRY_AFTER); }
+    public void setRetryAfter(boolean retryAfter) { setProperty(RETRY_AFTER, retryAfter); }
 }

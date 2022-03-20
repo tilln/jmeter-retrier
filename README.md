@@ -52,6 +52,8 @@ Parameters:
 - *Max Number of Retries*: Positive number limits the number of retries, negative retries infinitely, zero means no retries (default: 0).
 - *Pause (milliseconds)*: How long to pause before retrying the sampler or zero for no pause (default: 0).
 - *Response Codes*: Regex of response codes for which to retry, or empty to retry any unsuccessful sample result (default: empty).
+- *Respect "Retry-After":* Whether to respect an HTTP response header "Retry-After" before retrying (default: False).
+If a *Pause* is defined as well, the greater of the two values will be used.  
 
 ![Options](docs/retry-postprocessor.png)
 

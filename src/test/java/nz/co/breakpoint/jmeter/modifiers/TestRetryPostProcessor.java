@@ -9,6 +9,9 @@ import org.junit.Test;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 
 import static org.junit.Assert.*;
@@ -144,5 +147,39 @@ public class TestRetryPostProcessor {
         };
         instance.process();
         assertEquals("Expect no sub-results", 0, prev.getSubResults().length);
+    }
+
+    @Test
+    public void itShouldParseAnyRetryAfterHeader() {
+        prev.setResponseHeaders("HTTP/1.1 301 OK\n" +
+                "Retry-After: INVALID\n"
+        );
+        assertEquals(0, instance.getDelayUntilRetryAfterHeader(prev));
+
+        prev.setResponseHeaders("HTTP/1.1 429 OK\n" +
+                "Retry-After: 123"
+        );
+        assertEquals(123000, instance.getDelayUntilRetryAfterHeader(prev));
+
+        final String fiveSecondsLater = DateTimeFormatter.RFC_1123_DATE_TIME.format(
+                ZonedDateTime.ofInstant(Instant.ofEpochMilli(prev.getEndTime() + 5000), ZoneId.of("GMT")));
+        prev.setResponseHeaders("HTTP/1.1 503 OK\n" +
+                "Retry-After: " + fiveSecondsLater + "\n"
+        );
+        assertTrue("At most 5000 milliseconds", 5000 >= instance.getDelayUntilRetryAfterHeader(prev));
+
+        prev.setResponseHeaders("Retry-After: Thu, 01 Jan 1970 00:00:00 GMT\n");
+        assertEquals("Expect zero if in the past", 0, instance.getDelayUntilRetryAfterHeader(prev));
+    }
+
+    @Test
+    public void itShouldRespectRetryAfterHeader() {
+        instance.setRetryAfter(true);
+        instance.setMaxRetries(1);
+        prev.setResponseHeaders("\nRetry-After: 3");
+        Instant start = Instant.now();
+        instance.process();
+        long duration = Duration.between(start, Instant.now()).toMillis();
+        assertTrue("Expect at least 3 sec pause", duration >= 3000);
     }
 }
