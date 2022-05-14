@@ -1,10 +1,12 @@
 package nz.co.breakpoint.jmeter.modifiers;
 
+import nz.co.breakpoint.jmeter.modifiers.RetryPostProcessor.BackoffType;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.samplers.Sampler;
 import org.apache.jmeter.threads.JMeterContext;
 import org.apache.jmeter.threads.JMeterContextService;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.time.Duration;
@@ -13,10 +15,13 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
-
+import java.util.stream.IntStream;
 import static org.junit.Assert.*;
 
 public class TestRetryPostProcessor {
+    @ClassRule
+    public static final JMeterPropertiesResource props = new JMeterPropertiesResource();
+
     protected JMeterContext context;
     protected FailingSampler sampler;
     protected SampleResult prev;
@@ -103,6 +108,31 @@ public class TestRetryPostProcessor {
     }
 
     @Test
+    public void itShouldHaveDifferentBackoffStrategies() {
+        BackoffType.jitterFactor = 0.0;
+        assertArrayEquals(new long[]{ 100, 100, 100, 100, 100, 100, 100 },
+                IntStream.rangeClosed(1, 7).mapToLong(i -> BackoffType.NONE.nextPause(100, i)).toArray());
+        assertArrayEquals(new long[]{ 100, 200, 300, 400, 500, 600, 700 },
+                IntStream.rangeClosed(1, 7).mapToLong(i -> BackoffType.LINEAR.nextPause(100, i)).toArray());
+        assertArrayEquals(new long[]{ 100, 400, 900, 1600, 2500, 3600, 4900 },
+                IntStream.rangeClosed(1, 7).mapToLong(i -> BackoffType.POLYNOMIAL.nextPause(100,i)).toArray());
+        assertArrayEquals(new long[]{ 100, 200, 400, 800, 1600, 3200, 6400 },
+                IntStream.rangeClosed(1, 7).mapToLong(i -> BackoffType.EXPONENTIAL.nextPause(100,i)).toArray());
+    }
+
+    @Test
+    public void itShouldBackoffExponentially() {
+        BackoffType.jitterFactor = 0.0;
+        instance.setPauseMilliseconds(100);
+        instance.setBackoff(BackoffType.EXPONENTIAL.toTag());
+        Instant start = Instant.now();
+        instance.process();
+        long duration = Duration.between(start, Instant.now()).toMillis();
+        assertEquals("Expect four sub-results", 4, prev.getSubResults().length);
+        assertTrue("Expect increasing pauses", duration >= 100+200+400);
+    }
+
+    @Test
     public void itShouldPreserveNestedSubResults() {
         sampler = new RedirectingSampler(1);
         context.setCurrentSampler(sampler);
@@ -161,10 +191,10 @@ public class TestRetryPostProcessor {
         );
         assertEquals(123000, instance.getDelayUntilRetryAfterHeader(prev));
 
-        final String fiveSecondsLater = DateTimeFormatter.RFC_1123_DATE_TIME.format(
-                ZonedDateTime.ofInstant(Instant.ofEpochMilli(prev.getEndTime() + 5000), ZoneId.of("GMT")));
+        final String fiveSecondsFromNow = DateTimeFormatter.RFC_1123_DATE_TIME
+                .format(ZonedDateTime.now(ZoneId.of("GMT")).plusSeconds(5));
         prev.setResponseHeaders("HTTP/1.1 503 OK\n" +
-                "Retry-After: " + fiveSecondsLater + "\n"
+                "Retry-After: " + fiveSecondsFromNow + "\n"
         );
         assertTrue("At most 5000 milliseconds", 5000 >= instance.getDelayUntilRetryAfterHeader(prev));
 
