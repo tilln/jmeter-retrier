@@ -2,6 +2,8 @@ package nz.co.breakpoint.jmeter.modifiers;
 
 import java.beans.PropertyDescriptor;
 import org.apache.jmeter.testbeans.BeanInfoSupport;
+import org.apache.jmeter.testbeans.gui.TypeEditor;
+
 import static nz.co.breakpoint.jmeter.modifiers.RetryPostProcessor.*;
 
 public class RetryPostProcessorBeanInfo extends BeanInfoSupport {
@@ -10,7 +12,7 @@ public class RetryPostProcessorBeanInfo extends BeanInfoSupport {
         super(RetryPostProcessor.class);
 
         createPropertyGroup("Options", new String[]{
-                MAX_RETRIES, PAUSE_MILLISECONDS, RESPONSE_CODES, RETRY_AFTER
+                MAX_RETRIES, PAUSE_MILLISECONDS, BACKOFF, RESPONSE_CODES, RETRY_AFTER
         });
         PropertyDescriptor p;
 
@@ -21,6 +23,12 @@ public class RetryPostProcessorBeanInfo extends BeanInfoSupport {
         p = property(PAUSE_MILLISECONDS);
         p.setValue(NOT_UNDEFINED, Boolean.TRUE);
         p.setValue(DEFAULT, 0L);
+
+        p = property(BACKOFF, TypeEditor.ComboStringEditor);
+        p.setValue(RESOURCE_BUNDLE, getBeanDescriptor().getValue(RESOURCE_BUNDLE));
+        p.setValue(NOT_UNDEFINED, Boolean.TRUE);
+        p.setValue(DEFAULT, RetryPostProcessor.BackoffType.NONE.toTag());
+        p.setValue(TAGS, RetryPostProcessor.BackoffType.tags());
 
         p = property(RESPONSE_CODES);
         p.setValue(NOT_UNDEFINED, Boolean.TRUE);

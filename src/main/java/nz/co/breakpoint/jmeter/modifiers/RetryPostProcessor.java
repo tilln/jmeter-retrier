@@ -15,6 +15,8 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,12 +29,15 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
     public static final String
             MAX_RETRIES = "maxRetries",
             PAUSE_MILLISECONDS = "pauseMilliseconds",
+            BACKOFF = "backoff",
             RESPONSE_CODES = "responseCodes",
             RETRY_AFTER = "retryAfter";
 
     public static final String
             SAMPLE_LABEL_SUFFIX_PROPERTY = "jmeter.retrier.sampleLabelSuffix",
-            SAMPLE_LABEL_SUFFIX_PROPERTY_DEFAULT = "-retry";
+            SAMPLE_LABEL_SUFFIX_PROPERTY_DEFAULT = "-retry",
+            BACKOFF_MULTIPLIER_PROPERTY = "jmeter.retrier.backoffMultiplier",
+            BACKOFF_JITTER_PROPERTY = "jmeter.retrier.backoffJitter";
 
     public static final Pattern RETRY_AFTER_HEADER_PATTERN = Pattern.compile("\\bRetry-After: (\\V*)"); // word boundary/non-vertical whitespace
 
@@ -53,9 +58,9 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
                 log.debug("Not retrying sampler \"{}\"", sampler.getName());
                 return;
             }
-            if (pause(prev)) return;
+            if (pause(prev, i)) return; // interrupted?
 
-            log.debug("Retrying sampler \"{}\" (retry {})", sampler.getName(), i);
+            log.info("Retrying sampler \"{}\" (retry {})", sampler.getName(), i);
             res = sampler.sample(null);
             res = modifySampleResult(i, res, prev);
         }
@@ -65,23 +70,28 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
         final String retryCodes = getResponseCodes();
         if (retryCodes != null && !retryCodes.isEmpty()) {
             final String rc = lastResult.getResponseCode();
-            log.debug("Checking whether last sample response code \"{}\" is to be retried", rc);
-            return rc.matches(retryCodes);
+            final boolean doRetry = rc.matches(retryCodes);
+            log.debug("Response code \"{}\" is{} to be retried", rc, doRetry ? "" : " not");
+            return doRetry;
         }
-        log.debug("Checking whether last sample was successful: {}", lastResult.isSuccessful());
         return !lastResult.isSuccessful();
     }
 
-    protected boolean pause(SampleResult result) {
-        long pause = getPauseMilliseconds();
+    /**
+     * @return true iff interrupted during pause
+     */
+    protected boolean pause(SampleResult result, int retry) {
+        long pause = BackoffType.fromTag(getBackoff())
+                .nextPause(getPauseMilliseconds(), retry);
+
         if (getRetryAfter()) {
             long retryAfter = getDelayUntilRetryAfterHeader(result);
             if (retryAfter != 0) {
                 pause = Math.max(pause, retryAfter);
-                log.debug("Received \"Retry-After\", waiting {}ms", pause);
             }
         }
         if (pause > 0) {
+            log.debug("Waiting {}ms", pause);
             try {
                 Thread.sleep(pause);
             } catch (InterruptedException e) {
@@ -139,6 +149,8 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
         final Matcher m = RETRY_AFTER_HEADER_PATTERN.matcher(result.getResponseHeaders());
         if (m.find()) {
             final String value = m.group(1);
+            log.debug("Received \"Retry-After\": {}", value);
+
             if (value.matches("^[0-9]+$")) {
                 return Long.parseLong(value) * 1000L; // seconds to millis
             }
@@ -163,6 +175,55 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
     public String getResponseCodes() { return getPropertyAsString(RESPONSE_CODES); }
     public void setResponseCodes(String responseCodes) { setProperty(RESPONSE_CODES, responseCodes); }
 
+    public String getBackoff() { return getPropertyAsString(BACKOFF); }
+    public void setBackoff(String backoff) { setProperty(BACKOFF, backoff); }
+
     public boolean getRetryAfter() { return getPropertyAsBoolean(RETRY_AFTER); }
     public void setRetryAfter(boolean retryAfter) { setProperty(RETRY_AFTER, retryAfter); }
+
+    public enum BackoffType {
+        NONE,
+        LINEAR {
+            @Override
+            public long nextPause(long pause, int retry) {
+                return pause*retry + jitter(pause);
+            }
+        },
+        POLYNOMIAL {
+            @Override
+            public long nextPause(long pause, int retry) {
+                return Math.round(pause * Math.pow(retry, multiplier)) + jitter(pause);
+            }
+        },
+        EXPONENTIAL {
+            @Override
+            public long nextPause(long pause, int retry) {
+                return Math.round(pause * Math.pow(multiplier, retry-1)) + jitter(pause);
+            }
+        };
+        static double multiplier = JMeterUtils.getPropDefault(BACKOFF_MULTIPLIER_PROPERTY, 2.0f);
+        static double jitterFactor = Math.abs(JMeterUtils.getPropDefault(BACKOFF_JITTER_PROPERTY, 0.5f));
+
+        public long nextPause(long pause, int retry) {
+            return pause;
+        }
+
+        public long jitter(long pause) {
+            return (jitterFactor == 0.0d) ? 0 : Math.round(pause * ThreadLocalRandom.current().nextDouble(jitterFactor));
+        }
+
+        // Tags must match ResourceBundle and appear in script files:
+        public static BackoffType fromTag(String backoffType) {
+            return backoffType == null || backoffType.isEmpty() ? NONE :
+                    valueOf(backoffType.replaceFirst(BACKOFF + ".", ""));
+        }
+
+        public static String[] tags() {
+            return Arrays.stream(BackoffType.values()).map(BackoffType::toTag).toArray(String[]::new);
+        }
+
+        public String toTag() {
+            return BACKOFF + "." + this;
+        }
+    }
 }
