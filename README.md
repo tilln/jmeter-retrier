@@ -60,28 +60,35 @@ of samplers that should be retried.
 - *Pause (milliseconds)*: How long to pause before retrying the sampler or zero for no pause (default: 0).
 - *Backoff*: How to modify the initial *Pause* after each retry, in order to slow down to avoid overload.
   
-  |Backoff    |Meaning|n-th Delay|Example|
-  |-----------|-------|----------|-------|
-  |None       |Constant pause between all retries|Pause • 1|100, 100, 100, 100, 100, 100, 100 ms|
-  |Linear     |Pause grows linearly|Pause • n|100, 200, 300, 400, 500, 600, 700 ms|
-  |Polynomial |Pause is multiplied with a polynomial factor|Pause • n<sup>2</sup>|100, 400, 900, 1600, 2500, 3600, 4900 ms|
-  |Exponential|Pause doubles with every retry|Pause • 2<sup>n</sup>|100, 200, 400, 800, 1600, 3200, 6400 ms|
+  |Backoff    |Meaning|n-th Delay|Delays Example|
+  |-----------|-------|----------|--------------|
+  |None       |Constant pause between all retries|Pause • 1|100, 100, 100, 100, 100, 100 ms|
+  |Linear     |Pause grows linearly|Pause • n|100, 200, 300, 400, 500, 600 ms|
+  |Polynomial |Pause is multiplied with a polynomial factor|Pause • n<sup>2</sup>|100, 400, 900, 1600, 2500, 3600 ms|
+  |Exponential|Pause doubles with every retry|Pause • 2<sup>n</sup>|100, 200, 400, 800, 1600, 3200 ms|
 
-  The JMeter Property `jmeter.retrier.backoffMultiplier` configures the exponent and base
-  of the "Polynomial" and "Exponential" backoff strategies (default: 2).
+  The exponent and base of the "Polynomial" and "Exponential" backoff strategies can be configured via
+  JMeter Property `jmeter.retrier.backoffMultiplier` (default: 2).
 
 - *Jitter Factor* (positive decimal): Amount of random variation to add to the pauses (default: 0, i.e. jitter turned off).
   For example, a value of 0.1 will add up to 10% of the *Pause* to the calculated delay.
 
 - *Respect "Retry-After":* Whether to respect an HTTP response header "Retry-After" before retrying (default: False).
-If a non-zero *Pause* is defined as well, the greater of the two values will be used.  
+  If a non-zero *Pause* is defined as well, the greater of the two resulting delays will be applied.
+  For example, if the next pause would be 100 ms but the server sends "Retry-After: 10"
+  the effective delay will be 10 seconds rather than 100 ms.
 
-Note that this plugin will not [execute](https://jmeter.apache.org/usermanual/test_plan.html#executionorder)
+#### Assertions
+
+Note that this plugin will *not* [execute](https://jmeter.apache.org/usermanual/test_plan.html#executionorder)
 other JMeter elements, i.e. Pre-Processors, Timers, Post-Processors and Assertions as part of a retry.
 
 Pre-Processors and Timers will only be executed **once**, before the initial attempt.
 Likewise, Post-Processors and Assertions will only be executed **once**, after the final attempt
 (or before, in case of Post-Processors that appear before the *Retry Post-Processor*).
+
+Note, this is due to the way a `JMeterThread` [processes](https://github.com/apache/jmeter/blob/v5_0/src/core/org/apache/jmeter/threads/JMeterThread.java#L529) 
+Test Plan elements and this cannot be customised unfortunately.
 
 
 ### JMeter Properties
@@ -89,8 +96,9 @@ The following properties control the plugin behaviour:
 
 - `jmeter.retrier.sampleLabelSuffix`:
   Suffix to append to the retried sample's label (default: "-retry").
-- `jmeter.retrier.backoffMultiplier`: Factor that determines how much to the pauses increase with each retry,
-  as a base or exponent for polynomial/exponential backoff (default: 2).
+- `jmeter.retrier.backoffMultiplier`:
+  Determines how much the pauses increase with each retry,
+  as a exponent/base for polynomial/exponential backoff (default: 2).
 
 Installation
 ------------
