@@ -60,14 +60,14 @@ of samplers that should be retried.
 - *Pause (milliseconds)*: How long to pause before retrying the sampler or zero for no pause (default: 0).
 - *Backoff*: How to modify the initial *Pause* after each retry, in order to slow down to avoid overload.
   
-  |Backoff    |Meaning|
-  |-----------|-------|
-  |None       |Constant pause between all retries|
-  |Linear     |Pause grows linearly (e.g. 100, 200, 300, 400 ms)|
-  |Polynomial |Pause is multiplied with a polynomial factor (e.g. 100, 400, 900, 1600 ms)|
-  |Exponential|Pause doubles with every retry (e.g. 100, 200, 400, 800 ms)|
+  |Backoff    |Meaning|n-th Delay|Example|
+  |-----------|-------|----------|-------|
+  |None       |Constant pause between all retries|Pause • 1|100, 100, 100, 100, 100, 100, 100 ms|
+  |Linear     |Pause grows linearly|Pause • n|100, 200, 300, 400, 500, 600, 700 ms|
+  |Polynomial |Pause is multiplied with a polynomial factor|Pause • n<sup>2</sup>|100, 400, 900, 1600, 2500, 3600, 4900 ms|
+  |Exponential|Pause doubles with every retry|Pause • 2<sup>n</sup>|100, 200, 400, 800, 1600, 3200, 6400 ms|
 
-  The JMeter Property `jmeter.retrier.backoffMultiplier` configures the base or exponent
+  The JMeter Property `jmeter.retrier.backoffMultiplier` configures the exponent and base
   of the "Polynomial" and "Exponential" backoff strategies (default: 2).
 
 - *Jitter Factor*: Amount of random variation to add to the pauses (default: 0, i.e. jitter turned off).
