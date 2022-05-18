@@ -70,7 +70,7 @@ of samplers that should be retried.
   The JMeter Property `jmeter.retrier.backoffMultiplier` configures the exponent and base
   of the "Polynomial" and "Exponential" backoff strategies (default: 2).
 
-- *Jitter Factor*: Amount of random variation to add to the pauses (default: 0, i.e. jitter turned off).
+- *Jitter Factor* (positive decimal): Amount of random variation to add to the pauses (default: 0, i.e. jitter turned off).
   For example, a value of 0.1 will add up to 10% of the *Pause* to the calculated delay.
 
 - *Respect "Retry-After":* Whether to respect an HTTP response header "Retry-After" before retrying (default: False).

@@ -213,7 +213,7 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
 
         public long addJitter(long pause, double jitterFactor) {
             return (jitterFactor == 0.0d) ? 0 :
-                Math.round(pause * ThreadLocalRandom.current().nextDouble(jitterFactor));
+                Math.round(pause * ThreadLocalRandom.current().nextDouble(Math.abs(jitterFactor)));
         }
 
         // Tags must match ResourceBundle and appear in script files:
