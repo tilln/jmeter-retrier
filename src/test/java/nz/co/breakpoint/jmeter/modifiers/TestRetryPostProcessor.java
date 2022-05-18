@@ -6,7 +6,6 @@ import org.apache.jmeter.samplers.Sampler;
 import org.apache.jmeter.threads.JMeterContext;
 import org.apache.jmeter.threads.JMeterContextService;
 import org.junit.Before;
-import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.time.Duration;
@@ -19,9 +18,6 @@ import java.util.stream.IntStream;
 import static org.junit.Assert.*;
 
 public class TestRetryPostProcessor {
-    @ClassRule
-    public static final JMeterPropertiesResource props = new JMeterPropertiesResource();
-
     protected JMeterContext context;
     protected FailingSampler sampler;
     protected SampleResult prev;
@@ -109,20 +105,24 @@ public class TestRetryPostProcessor {
 
     @Test
     public void itShouldHaveDifferentBackoffStrategies() {
-        BackoffType.jitterFactor = 0.0;
         assertArrayEquals(new long[]{ 100, 100, 100, 100, 100, 100, 100 },
-                IntStream.rangeClosed(1, 7).mapToLong(i -> BackoffType.NONE.nextPause(100, i)).toArray());
+                IntStream.rangeClosed(1, 7).mapToLong(i -> BackoffType.NONE.nextPause(100, i, 0.0)).toArray());
         assertArrayEquals(new long[]{ 100, 200, 300, 400, 500, 600, 700 },
-                IntStream.rangeClosed(1, 7).mapToLong(i -> BackoffType.LINEAR.nextPause(100, i)).toArray());
+                IntStream.rangeClosed(1, 7).mapToLong(i -> BackoffType.LINEAR.nextPause(100, i, 0.0)).toArray());
         assertArrayEquals(new long[]{ 100, 400, 900, 1600, 2500, 3600, 4900 },
-                IntStream.rangeClosed(1, 7).mapToLong(i -> BackoffType.POLYNOMIAL.nextPause(100,i)).toArray());
+                IntStream.rangeClosed(1, 7).mapToLong(i -> BackoffType.POLYNOMIAL.nextPause(100, i, 0.0)).toArray());
         assertArrayEquals(new long[]{ 100, 200, 400, 800, 1600, 3200, 6400 },
-                IntStream.rangeClosed(1, 7).mapToLong(i -> BackoffType.EXPONENTIAL.nextPause(100,i)).toArray());
+                IntStream.rangeClosed(1, 7).mapToLong(i -> BackoffType.EXPONENTIAL.nextPause(100, i, 0.0)).toArray());
+    }
+
+    @Test
+    public void itShouldApplyJitter() {
+        assertTrue(IntStream.rangeClosed(1, 7).mapToLong(i -> BackoffType.NONE.nextPause(100, i, 1.0))
+                .anyMatch(l -> l != 100));
     }
 
     @Test
     public void itShouldBackoffExponentially() {
-        BackoffType.jitterFactor = 0.0;
         instance.setPauseMilliseconds(100);
         instance.setBackoff(BackoffType.EXPONENTIAL.toTag());
         Instant start = Instant.now();

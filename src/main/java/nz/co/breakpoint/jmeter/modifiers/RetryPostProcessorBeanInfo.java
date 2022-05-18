@@ -11,14 +11,22 @@ public class RetryPostProcessorBeanInfo extends BeanInfoSupport {
     public RetryPostProcessorBeanInfo() {
         super(RetryPostProcessor.class);
 
-        createPropertyGroup("Options", new String[]{
-                MAX_RETRIES, PAUSE_MILLISECONDS, BACKOFF, RESPONSE_CODES, RETRY_AFTER
+        createPropertyGroup("RetryConditions", new String[]{
+                MAX_RETRIES, RESPONSE_CODES
         });
         PropertyDescriptor p;
 
         p = property(MAX_RETRIES);
         p.setValue(NOT_UNDEFINED, Boolean.TRUE);
         p.setValue(DEFAULT, 0L);
+
+        p = property(RESPONSE_CODES);
+        p.setValue(NOT_UNDEFINED, Boolean.TRUE);
+        p.setValue(DEFAULT, "");
+
+        createPropertyGroup("DelaySettings", new String[]{
+                PAUSE_MILLISECONDS, BACKOFF, JITTER, RETRY_AFTER
+        });
 
         p = property(PAUSE_MILLISECONDS);
         p.setValue(NOT_UNDEFINED, Boolean.TRUE);
@@ -30,9 +38,9 @@ public class RetryPostProcessorBeanInfo extends BeanInfoSupport {
         p.setValue(DEFAULT, RetryPostProcessor.BackoffType.NONE.toTag());
         p.setValue(TAGS, RetryPostProcessor.BackoffType.tags());
 
-        p = property(RESPONSE_CODES);
+        p = property(JITTER);
         p.setValue(NOT_UNDEFINED, Boolean.TRUE);
-        p.setValue(DEFAULT, "");
+        p.setValue(DEFAULT, 0.0);
 
         p = property(RETRY_AFTER);
         p.setValue(NOT_UNDEFINED, Boolean.TRUE);

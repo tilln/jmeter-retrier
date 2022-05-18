@@ -5,6 +5,7 @@ import org.apache.jmeter.samplers.Sampler;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.testbeans.TestBean;
 import org.apache.jmeter.testelement.AbstractTestElement;
+import org.apache.jmeter.testelement.property.DoubleProperty;
 import org.apache.jmeter.threads.JMeterContext;
 import org.apache.jmeter.util.JMeterUtils;
 import org.slf4j.LoggerFactory;
@@ -30,14 +31,14 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
             MAX_RETRIES = "maxRetries",
             PAUSE_MILLISECONDS = "pauseMilliseconds",
             BACKOFF = "backoff",
+            JITTER = "jitter",
             RESPONSE_CODES = "responseCodes",
             RETRY_AFTER = "retryAfter";
 
     public static final String
             SAMPLE_LABEL_SUFFIX_PROPERTY = "jmeter.retrier.sampleLabelSuffix",
             SAMPLE_LABEL_SUFFIX_PROPERTY_DEFAULT = "-retry",
-            BACKOFF_MULTIPLIER_PROPERTY = "jmeter.retrier.backoffMultiplier",
-            BACKOFF_JITTER_PROPERTY = "jmeter.retrier.backoffJitter";
+            BACKOFF_MULTIPLIER_PROPERTY = "jmeter.retrier.backoffMultiplier";
 
     public static final Pattern RETRY_AFTER_HEADER_PATTERN = Pattern.compile("\\bRetry-After: (\\V*)"); // word boundary/non-vertical whitespace
 
@@ -82,7 +83,7 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
      */
     protected boolean pause(SampleResult result, int retry) {
         long pause = BackoffType.fromTag(getBackoff())
-                .nextPause(getPauseMilliseconds(), retry);
+                .nextPause(getPauseMilliseconds(), retry, getJitter());
 
         if (getRetryAfter()) {
             long retryAfter = getDelayUntilRetryAfterHeader(result);
@@ -178,6 +179,9 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
     public String getBackoff() { return getPropertyAsString(BACKOFF); }
     public void setBackoff(String backoff) { setProperty(BACKOFF, backoff); }
 
+    public double getJitter() { return getPropertyAsDouble(JITTER); }
+    public void setJitter(double jitter) { setProperty(new DoubleProperty(JITTER, jitter)); }
+
     public boolean getRetryAfter() { return getPropertyAsBoolean(RETRY_AFTER); }
     public void setRetryAfter(boolean retryAfter) { setProperty(RETRY_AFTER, retryAfter); }
 
@@ -185,31 +189,31 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
         NONE,
         LINEAR {
             @Override
-            public long nextPause(long pause, int retry) {
-                return pause*retry + jitter(pause);
+            public long nextPause(long pause, int retry, double jitter) {
+                return pause*retry + addJitter(pause, jitter);
             }
         },
         POLYNOMIAL {
             @Override
-            public long nextPause(long pause, int retry) {
-                return Math.round(pause * Math.pow(retry, multiplier)) + jitter(pause);
+            public long nextPause(long pause, int retry, double jitter) {
+                return Math.round(pause * Math.pow(retry, multiplier)) + addJitter(pause, jitter);
             }
         },
         EXPONENTIAL {
             @Override
-            public long nextPause(long pause, int retry) {
-                return Math.round(pause * Math.pow(multiplier, retry-1)) + jitter(pause);
+            public long nextPause(long pause, int retry, double jitter) {
+                return Math.round(pause * Math.pow(multiplier, retry-1)) + addJitter(pause, jitter);
             }
         };
         static double multiplier = JMeterUtils.getPropDefault(BACKOFF_MULTIPLIER_PROPERTY, 2.0f);
-        static double jitterFactor = Math.abs(JMeterUtils.getPropDefault(BACKOFF_JITTER_PROPERTY, 0.5f));
 
-        public long nextPause(long pause, int retry) {
-            return pause;
+        public long nextPause(long pause, int retry, double jitter) {
+            return pause + addJitter(pause, jitter);
         }
 
-        public long jitter(long pause) {
-            return (jitterFactor == 0.0d) ? 0 : Math.round(pause * ThreadLocalRandom.current().nextDouble(jitterFactor));
+        public long addJitter(long pause, double jitterFactor) {
+            return (jitterFactor == 0.0d) ? 0 :
+                Math.round(pause * ThreadLocalRandom.current().nextDouble(jitterFactor));
         }
 
         // Tags must match ResourceBundle and appear in script files:
