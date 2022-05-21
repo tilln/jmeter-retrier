@@ -62,12 +62,12 @@ public class TestRetryPostProcessor {
     @Test
     public void itShouldRetryOnlySpecifiedResponseCodes() {
         instance.setMaxRetries(10);
-        instance.setResponseCodes("3|2"); // retry the first two results
+        instance.setResponseCodes("[a-z]*[32]"); // retry the first two results
         instance.process();
         assertEquals("Expect three sub-results", 3, prev.getSubResults().length);
-        assertEquals("Expect failure response code", "3", prev.getSubResults()[0].getResponseCode());
-        assertEquals("Expect failure response code", "2", prev.getSubResults()[1].getResponseCode());
-        assertEquals("Expect success response code", "1", prev.getSubResults()[2].getResponseCode());
+        assertEquals("Expect failure response code", "code3", prev.getSubResults()[0].getResponseCode());
+        assertEquals("Expect failure response code", "code2", prev.getSubResults()[1].getResponseCode());
+        assertEquals("Expect success response code", "code1", prev.getSubResults()[2].getResponseCode());
         assertTrue("Expect all samples to be unsuccessful", Arrays.stream(prev.getSubResults()).noneMatch(SampleResult::isSuccessful));
     }
 
@@ -87,10 +87,16 @@ public class TestRetryPostProcessor {
         instance.setMaxRetries(1);
         instance.process();
         assertEquals("Expect two sub-results", 2, prev.getSubResults().length);
-        long totalBytes = Arrays.stream(prev.getSubResults()).mapToLong(SampleResult::getBytesAsLong).sum();
-        assertEquals("Bytes total mismatch", prev.getBytesAsLong(), totalBytes);
-        long totalTime = Arrays.stream(prev.getSubResults()).mapToLong(SampleResult::getTime).sum();
-        assertEquals("Response time total mismatch", prev.getTime(), totalTime);
+        assertEquals("Bytes total mismatch", prev.getBytesAsLong(),
+                Arrays.stream(prev.getSubResults()).mapToLong(SampleResult::getBytesAsLong).sum());
+        assertEquals("Sent Bytes total mismatch", prev.getSentBytes(),
+                Arrays.stream(prev.getSubResults()).mapToLong(SampleResult::getSentBytes).sum());
+        assertEquals("Header Size total mismatch", prev.getHeadersSize(),
+                Arrays.stream(prev.getSubResults()).mapToLong(SampleResult::getHeadersSize).sum());
+        assertEquals("Body Size total mismatch", prev.getBodySizeAsLong(),
+                Arrays.stream(prev.getSubResults()).mapToLong(SampleResult::getBodySizeAsLong).sum());
+        assertEquals("Response time total mismatch", prev.getTime(),
+                Arrays.stream(prev.getSubResults()).mapToLong(SampleResult::getTime).sum());
     }
 
     @Test

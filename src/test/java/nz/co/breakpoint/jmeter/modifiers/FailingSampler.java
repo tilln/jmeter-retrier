@@ -27,7 +27,12 @@ public class FailingSampler extends AbstractSampler {
     public SampleResult sample(Entry e) {
         SampleResult res = SampleResult.createTestSample(100);
         res.setSampleLabel(getName());
-        res.setResponseCode(""+remainingFailures);
+        res.setResponseCode("code"+remainingFailures);
+        res.setResponseData("data"+remainingFailures, "UTF-8");
+        res.setResponseHeaders("headers"+remainingFailures);
+        res.setResponseMessage("message"+remainingFailures);
+        res.setSentBytes(remainingFailures);
+        res.setHeadersSize(remainingFailures);
         res.setSuccessful(remainingFailures-- <= 0);
         return res;
     }

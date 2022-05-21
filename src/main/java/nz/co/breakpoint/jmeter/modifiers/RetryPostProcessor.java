@@ -109,6 +109,12 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
         if (retryCount == 1) { // this is the first retry
             SampleResult firstTry = new SampleResult(prev); // clone
             prev.removeSubResults(); // in case there are any (e.g. redirects)
+            // reset all counters as well as data to avoid double counting the first try
+            prev.setBodySize(0L);
+            prev.setHeadersSize(0);
+            prev.setSentBytes(0);
+            prev.setBytes(0L);
+            prev.setResponseData(new byte[0]);
             log.debug("Adding original result "+firstTry.getSampleLabel());
             prev.addSubResult(firstTry, false);
             final String suffix = JMeterUtils.getPropDefault(SAMPLE_LABEL_SUFFIX_PROPERTY, SAMPLE_LABEL_SUFFIX_PROPERTY_DEFAULT);
