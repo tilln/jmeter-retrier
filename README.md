@@ -53,7 +53,13 @@ of samplers that should be retried.
 #### Retry Conditions:
 
 - *Max Number of Retries*: Positive number limits the number of retries, negative retries infinitely, zero means no retries (default: 0).
-- *Response Codes*: Regex of response codes for which to retry, or empty to retry any unsuccessful sample result (default: empty).
+- *Response Part*: Which part of the sample response to check: Response code, data, headers, message, or none (default: None).
+  If "None" is selected, the sample is retried if the result was unsuccessful.
+- *Error Pattern*: Retry if this regex pattern is contained in the response part selected above (default: empty).
+  If empty, the sample is retried if the result was unsuccessful.
+  
+Note that the success or failure of the sample result is determined by the sampler itself only.
+Assertions are not taken into account as they only run after the Retry Post-Processor.
 
 #### Delay Settings:
 
