@@ -12,7 +12,7 @@ public class RetryPostProcessorBeanInfo extends BeanInfoSupport {
         super(RetryPostProcessor.class);
 
         createPropertyGroup("RetryConditions", new String[]{
-                MAX_RETRIES, RESPONSE_CODES
+                MAX_RETRIES, RESPONSE_PART, ERROR_PATTERN
         });
         PropertyDescriptor p;
 
@@ -20,7 +20,13 @@ public class RetryPostProcessorBeanInfo extends BeanInfoSupport {
         p.setValue(NOT_UNDEFINED, Boolean.TRUE);
         p.setValue(DEFAULT, 0L);
 
-        p = property(RESPONSE_CODES);
+        p = property(RESPONSE_PART, TypeEditor.ComboStringEditor);
+        p.setValue(RESOURCE_BUNDLE, getBeanDescriptor().getValue(RESOURCE_BUNDLE));
+        p.setValue(NOT_UNDEFINED, Boolean.TRUE);
+        p.setValue(DEFAULT, RetryPostProcessor.ResponsePart.NONE.toTag());
+        p.setValue(TAGS, RetryPostProcessor.ResponsePart.tags());
+
+        p = property(ERROR_PATTERN);
         p.setValue(NOT_UNDEFINED, Boolean.TRUE);
         p.setValue(DEFAULT, "");
 

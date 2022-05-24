@@ -7,7 +7,6 @@ import org.apache.jmeter.threads.JMeterContext;
 import org.apache.jmeter.threads.JMeterContextService;
 import org.junit.Before;
 import org.junit.Test;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -15,6 +14,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.stream.IntStream;
+import static nz.co.breakpoint.jmeter.modifiers.RetryPostProcessor.ResponsePart.*;
 import static org.junit.Assert.*;
 
 public class TestRetryPostProcessor {
@@ -60,15 +60,27 @@ public class TestRetryPostProcessor {
     }
 
     @Test
-    public void itShouldRetryOnlySpecifiedResponseCodes() {
-        instance.setMaxRetries(10);
-        instance.setResponseCodes("[a-z]*[32]"); // retry the first two results
+    public void itShouldIgnoreInvalidErrorPatterns() {
+        instance.setErrorPattern("[");
         instance.process();
-        assertEquals("Expect three sub-results", 3, prev.getSubResults().length);
-        assertEquals("Expect failure response code", "code3", prev.getSubResults()[0].getResponseCode());
-        assertEquals("Expect failure response code", "code2", prev.getSubResults()[1].getResponseCode());
-        assertEquals("Expect success response code", "code1", prev.getSubResults()[2].getResponseCode());
-        assertTrue("Expect all samples to be unsuccessful", Arrays.stream(prev.getSubResults()).noneMatch(SampleResult::isSuccessful));
+        assertEquals("Original result must be unmodified", prev, context.getPreviousResult());
+        assertEquals("Expect no sub-results", 0, prev.getSubResults().length);
+    }
+
+    @Test
+    public void itShouldRetryOnlySpecifiedResponseParts() {
+        instance.setMaxRetries(10);
+        instance.setErrorPattern("[a-z]*[32]"); // retry the first two results
+        for (RetryPostProcessor.ResponsePart part : new RetryPostProcessor.ResponsePart[]
+                { RESPONSE_CODE, RESPONSE_DATA, RESPONSE_HEADERS, RESPONSE_MESSAGE }) {
+            instance.setResponsePart(part.toTag());
+            instance.process();
+            assertEquals("Expect three sub-results", 3, prev.getSubResults().length);
+            assertEquals("Expect failure response code", "code3", prev.getSubResults()[0].getResponseCode());
+            assertEquals("Expect failure response code", "code2", prev.getSubResults()[1].getResponseCode());
+            assertEquals("Expect success response code", "code1", prev.getSubResults()[2].getResponseCode());
+            assertTrue("Expect all samples to be unsuccessful", Arrays.stream(prev.getSubResults()).noneMatch(SampleResult::isSuccessful));
+        }
     }
 
     @Test

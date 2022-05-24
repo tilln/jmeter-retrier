@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 public class RetryPostProcessor extends AbstractTestElement implements PostProcessor, TestBean {
 
@@ -32,7 +33,8 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
             PAUSE_MILLISECONDS = "pauseMilliseconds",
             BACKOFF = "backoff",
             JITTER = "jitter",
-            RESPONSE_CODES = "responseCodes",
+            RESPONSE_PART = "responsePart",
+            ERROR_PATTERN = "errorPattern",
             RETRY_AFTER = "retryAfter";
 
     public static final String
@@ -68,12 +70,20 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
     }
 
     protected boolean isRetryCondition(Sampler sampler, SampleResult lastResult) {
-        final String retryCodes = getResponseCodes();
-        if (retryCodes != null && !retryCodes.isEmpty()) {
-            final String rc = lastResult.getResponseCode();
-            final boolean doRetry = rc.matches(retryCodes);
-            log.debug("Response code \"{}\" is{} to be retried", rc, doRetry ? "" : " not");
-            return doRetry;
+        ResponsePart part = ResponsePart.fromTag(getResponsePart());
+        String responsePart = part.extractPart(lastResult);
+        final String errorPattern = getErrorPattern();
+        if (errorPattern != null && !errorPattern.isEmpty()) {
+            try {
+                Pattern pattern = Pattern.compile(errorPattern);
+                Matcher matcher = pattern.matcher(responsePart);
+                final boolean doRetry = matcher.find();
+                log.debug("Response part {} retry condition", doRetry ? "matches" : "does not match");
+                return doRetry;
+            } catch (PatternSyntaxException e) {
+                log.error("Ignoring invalid error pattern {}", errorPattern, e);
+                return false;
+            }
         }
         return !lastResult.isSuccessful();
     }
@@ -179,8 +189,11 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
     public long getPauseMilliseconds() { return getPropertyAsLong(PAUSE_MILLISECONDS); }
     public void setPauseMilliseconds(long pauseMilliseconds) { setProperty(PAUSE_MILLISECONDS, pauseMilliseconds); }
 
-    public String getResponseCodes() { return getPropertyAsString(RESPONSE_CODES); }
-    public void setResponseCodes(String responseCodes) { setProperty(RESPONSE_CODES, responseCodes); }
+    public String getResponsePart() { return getPropertyAsString(RESPONSE_PART); }
+    public void setResponsePart(String responsePart) { setProperty(RESPONSE_PART, responsePart); }
+
+    public String getErrorPattern() { return getPropertyAsString(ERROR_PATTERN); }
+    public void setErrorPattern(String errorPattern) { setProperty(ERROR_PATTERN, errorPattern); }
 
     public String getBackoff() { return getPropertyAsString(BACKOFF); }
     public void setBackoff(String backoff) { setProperty(BACKOFF, backoff); }
@@ -190,6 +203,52 @@ public class RetryPostProcessor extends AbstractTestElement implements PostProce
 
     public boolean getRetryAfter() { return getPropertyAsBoolean(RETRY_AFTER); }
     public void setRetryAfter(boolean retryAfter) { setProperty(RETRY_AFTER, retryAfter); }
+
+    public enum ResponsePart {
+        NONE,
+        RESPONSE_CODE {
+            @Override
+            public String extractPart(SampleResult result) {
+                return result.getResponseCode();
+            }
+        },
+        RESPONSE_DATA {
+            @Override
+            public String extractPart(SampleResult result) {
+                return result.getResponseDataAsString();
+            }
+        },
+        RESPONSE_HEADERS {
+            @Override
+            public String extractPart(SampleResult result) {
+                return result.getResponseHeaders();
+            }
+        },
+        RESPONSE_MESSAGE {
+            @Override
+            public String extractPart(SampleResult result) {
+                return result.getResponseMessage();
+            }
+        };
+
+        public String extractPart(SampleResult result) {
+            return null;
+        }
+
+        // Tags must match ResourceBundle and appear in script files:
+        public static ResponsePart fromTag(String responsePart) {
+            return responsePart == null || responsePart.isEmpty() ? NONE :
+                    valueOf(responsePart.replaceFirst(RESPONSE_PART + ".", ""));
+        }
+
+        public static String[] tags() {
+            return Arrays.stream(ResponsePart.values()).map(ResponsePart::toTag).toArray(String[]::new);
+        }
+
+        public String toTag() {
+            return RESPONSE_PART + "." + this;
+        }
+    }
 
     public enum BackoffType {
         NONE,
