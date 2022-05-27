@@ -108,7 +108,7 @@ The following properties control the plugin behaviour:
 
 Installation
 ------------
-<!--
+
 ### Via [PluginsManager](https://jmeter-plugins.org/wiki/PluginsManager/)
 
 Under tab "Available Plugins", select "Sample Retrier", then click "Apply Changes and Restart JMeter".
@@ -116,10 +116,10 @@ Under tab "Available Plugins", select "Sample Retrier", then click "Apply Change
 ### Via Package from [JMeter-Plugins.org](https://jmeter-plugins.org/)
 
 Extract the [zip package](https://jmeter-plugins.org/files/packages/tilln-retrier-1.0.zip) into JMeter's lib directory, then restart JMeter.
--->
+
 ### Via Manual Download
 
-1. Copy the [jmeter-retrier jar file](https://github.com/tilln/jmeter-retrier/releases/download/1.0-SNAPSHOT/jmeter-retrier-1.0-SNAPSHOT.jar) into JMeter's lib/ext directory.
+1. Copy the [jmeter-retrier jar file](https://github.com/tilln/jmeter-retrier/releases/download/1.0/jmeter-retrier-1.0.jar) into JMeter's lib/ext directory.
 2. Restart JMeter.
 
 

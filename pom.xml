@@ -4,7 +4,7 @@
     <groupId>nz.co.breakpoint</groupId>
     <artifactId>jmeter-retrier</artifactId>
     <packaging>jar</packaging>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0</version>
     <name>JMeter Retrier</name>
     <url>http://maven.apache.org</url>
 
@@ -25,6 +25,7 @@
 			<groupId>org.apache.jmeter</groupId>
 			<artifactId>ApacheJMeter_core</artifactId>
 			<version>5.0</version>
+            <scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.hamcrest</groupId>
